@@ -1,0 +1,7 @@
+/nodes
+/clients
+
+# Ruby environment
+.ruby-env
+.ruby-gemset
+.ruby-version

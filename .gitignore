@@ -1,0 +1,10 @@
+/nodes
+/pkg
+Gemfile.lock
+
+/build
+
+# Ruby environment
+.ruby-env
+.ruby-gemset
+
