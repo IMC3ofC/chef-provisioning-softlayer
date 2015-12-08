@@ -26,8 +26,9 @@ module Provisioning
           :bare_metal_server   =>  86400
         },
         :ssh_timeout           =>    120,
-        :bandwidth             =>    "20000 GB Bandwidth",
-        :network_speed         =>    "1000"
+        :bandwidth             =>    "500 GB Bandwidth",
+        :network_speed         =>    "1000",
+        :network_description   =>    "1 Gbps Public & Private Network Uplinks"
       }
 
       INSTANCE_IDX = ["virtual_server", "bare_metal_instance", "bare_metal_server"]
@@ -68,6 +69,7 @@ module Provisioning
         power_supply:      35,
         bandwidth:         10,
         network:           26,
+        host_ping:         20,
         remote:            46,
         primary_ip:        13,
         monitoring:        20,

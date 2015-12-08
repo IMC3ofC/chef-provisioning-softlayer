@@ -10,6 +10,9 @@
 # All rights reserved
 #
 
+require 'openssl'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+
 require 'chef/mixin/shell_out'
 require 'chef/provisioning/driver'
 require 'chef/provisioning/machine/unix_machine'
@@ -34,8 +37,8 @@ module Provisioning
       include Chef::Mixin::ShellOut
 
       @@semaphore = Mutex.new
-      @@sshkeys_search_dirs = [ "#{ENV['HOME']}/.softlayer_driver/keys", 
-                                "#{ENV['HOME']}/.chef/ssh", 
+      @@sshkeys_search_dirs = [ "#{ENV['HOME']}/.softlayer_driver/keys",
+                                "#{ENV['HOME']}/.chef/ssh",
                                 "#{ENV['HOME']}/.ssh" ]
       def self.from_url(url, config)
         SoftlayerDriver.new(url, config)
@@ -61,7 +64,9 @@ module Provisioning
           error_exit "\n[softlayer_driver#initialize] Invalid driver options : #{config}"
         end
 
-        @client = SoftLayer::Client.new(username: user_name, api_key: api_key, timeout: 600)
+        @client = SoftLayer::Client.new(username: user_name,
+                                        api_key: api_key,
+                                        timeout: 600)
         @account        = nil
         @vguest         = nil
         @product_order  = nil
@@ -92,32 +97,37 @@ module Provisioning
         end
 
         # set up key if needed
-        machine_spec.location["key_name"] = machine_options.fetch(:key_name,nil)
-        machine_spec.save(action_handler)
+        if action_handler.should_perform_actions
+          machine_spec.location["key_name"] = machine_options.fetch(:key_name,nil)
+          machine_spec.save(action_handler)
+        end
 
         if machine_spec.location["provision_state"].nil? ||
            (machine_spec.location["id"].nil? && machine_spec.location["globalIdentifier"].nil?) 
 
           Chef::Log.info %(\n[softlayer_driver#allocate_machine] Machine #{machine_spec.name} not found in ./nodes/)
 
-          action_handler.perform_action "softlayer_driver#allocate_machine] Creating server #{machine_spec.name}" do
+          action_handler.perform_action "[softlayer_driver#allocate_machine] Creating server #{machine_spec.name}" do
             server = create_node action_handler, machine_options, machine_spec
-            if server
-              machine_spec.location["instance_type"] = @instance_type
-              case @instance_type
-              when INSTANCE_TYPES[:virtual_server][:name]
-                machine_spec.location["id"] = server[:id]
-              else
-                machine_spec.location["globalIdentifier"]  =  server[:globalIdentifier]
+            if action_handler.should_perform_actions
+              if server
+                machine_spec.location["instance_type"] = @instance_type
+                case @instance_type
+                when INSTANCE_TYPES[:virtual_server][:name]
+                  machine_spec.location["id"] = server[:id]
+                else
+                  machine_spec.location["globalIdentifier"]  =  server[:globalIdentifier]
+                end
+
+                machine_spec.location["provision_state"]  =  server[:provision_state]
+                Chef::Log.info %(\n[softlayer_driver#allocate_machine] #{machine_spec.name} - Instance Initialized !)
+
+                # save machine space for imdempotence
+                machine_spec.save(action_handler)
               end
-
-              machine_spec.location["provision_state"]  =  server[:provision_state]
-              Chef::Log.info %(\n[softlayer_driver#allocate_machine] #{machine_spec.name} - Instance Initialized !)
-
-              # save machine space for imdempotence
-              machine_spec.save(action_handler)
-
-            end
+            else
+              Chef::Log.info %(\n[softlayer_driver#allocate_machine] Running why-run mode ... machine_options are verified !)
+            end  
           end
         else
           Chef::Log.info %(\n[softlayer_driver#allocate_machine] Machine #{machine_spec.name} found in ./nodes/)
@@ -137,42 +147,43 @@ module Provisioning
 
       def ready_machine(action_handler, machine_spec, machine_options)
         Chef::Log.info "\n[softlayer_driver#ready_machine] ready_machine ..."
-
-        if machine_spec.location["provision_state"] == PROVISION_STATE[:INIT]
-          query_provision_state(action_handler, machine_spec)
-          Chef::Log.info %(\n[softlayer_driver#ready_machine] #{machine_spec.name} -  created !)
-        elsif machine_spec.location["provision_state"] == PROVISION_STATE[:DONE]
-            server = server_for machine_spec
-            error_exit "[softlayer_driver#ready_machine] Invalid Server !" if server.nil? || server[:power].nil?
-            if server[:power].upcase == SERVER_STATE[:RUNNING] ||
-               server[:power].upcase == SERVER_STATE[:ON]
-              Chef::Log.info %(\n[softlayer_driver#ready_machine] Machine is powered on and waiting for #{machine_spec.name} ready ...)
-              wait_until_ready machine_spec
-            else
-              start_machine = %([softlayer_driver#ready_machine] Starting machine #{machine_spec.name}  ...)
-              Chef::Log.info start_machine
-              action_handler.perform_action start_machine do
-                start_instance server[:id], @instance_type
-              end
-
-              wait_for_machine = %([softlayer_driver#ready_machine] Machine is started and waiting for machine #{machine_spec.name} ready ...)
-              Chef::Log.info wait_for_machine
-              action_handler.perform_action wait_for_machine do
-                wait_until_ready machine_spec
-              end
-            end
-        else
-          error_exit "[softlayer_driver#ready_machine] #{machine_spec.name} is in an invalid state !"
-        end
-
-        Chef::Log.info %(\n[softlayer_driver#ready_machine] ready_machine ... Done !)
-
         # clean up known_host file
         if action_handler.should_perform_actions
+
+          if machine_spec.location["provision_state"] == PROVISION_STATE[:INIT]
+            query_provision_state(action_handler, machine_spec)
+            Chef::Log.info %(\n[softlayer_driver#ready_machine] #{machine_spec.name} -  created !)
+          elsif machine_spec.location["provision_state"] == PROVISION_STATE[:DONE]
+              server = server_for machine_spec
+              error_exit "[softlayer_driver#ready_machine] Invalid Server !" if server.nil? || server[:power].nil?
+              if server[:power].upcase == SERVER_STATE[:RUNNING] ||
+                server[:power].upcase == SERVER_STATE[:ON]
+                Chef::Log.info %(\n[softlayer_driver#ready_machine] Machine is powered on and waiting for #{machine_spec.name} ready ...)
+                wait_until_ready machine_spec
+              else
+                start_machine = %([softlayer_driver#ready_machine] Starting machine #{machine_spec.name}  ...)
+                Chef::Log.info start_machine
+                action_handler.perform_action start_machine do
+                  start_instance server[:id], @instance_type
+                end
+
+                wait_for_machine = %([softlayer_driver#ready_machine] Machine is started and waiting for machine #{machine_spec.name} ready ...)
+                Chef::Log.info wait_for_machine
+                action_handler.perform_action wait_for_machine do
+                  wait_until_ready machine_spec
+                end
+              end
+          else
+            error_exit "[softlayer_driver#ready_machine] #{machine_spec.name} is in an invalid state !"
+          end
+
+          Chef::Log.info %(\n[softlayer_driver#ready_machine] ready_machine ... Done !)
+
           cleanup_host machine_spec
         else
           # create a dummy/place holder machine to avoid raising an error
-          error_exit  "[softlayer_driver#allocate_machine] why_run is not supported for now!"
+          Chef::Log.info "[softlayer_driver#allocate_machine] running in why-run mode ... skipped !"
+          return nil
         end
 
         # Return the Machine object
@@ -269,7 +280,7 @@ module Provisioning
             else
               private_path = nil
             end
-          end 
+          end
           raise "Can not find private key file for #{key_name} !" if private_path.nil?
         end
 

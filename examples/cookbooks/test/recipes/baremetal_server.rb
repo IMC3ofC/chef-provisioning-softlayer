@@ -13,6 +13,8 @@
 # All rights reserved
 #
 
+require 'openssl'
+OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
 
 require 'chef'
 require 'chef/provisioning'
@@ -61,7 +63,7 @@ machine_options = {
   :cpu => {
     :cores => 8,                          # Number of cores
                                           # Required, Integer
-    :type  => "Xeon 2650"                 # cpu type if "bare_metal_server" as SoftLayer Portal describe while ordering
+    :type  => "Dual Intel Xeon E5-2650 "  # full description of cpu type as SoftLayer Portal display while ordering in Web
   },
 
   :ram =>  16,                             # Amount of RAM in GB
@@ -73,12 +75,18 @@ machine_options = {
 
   :network => {                            # Network configuration
                                            # Required, Object
-      :hostname => "sl-driver-test",       # provide a host name
-      :domain   => "imdemocloud.com",      # provide a domain name                               
-      :speed    =>  1000                   # Speed of network in Mbps
-                                           # Optional, Integer, 1000 (default)
-                                           # One of 10, 100, 1000 if "virtual server" or "bare meteal instance"
-                                           # One of 100, 1000, 100000 if "bare meteal server"
+      :hostname    => "sl-driver-test",    # provide a host name
+      :domain      => "imdemocloud.com",   # provide a domain name                               
+      :description => "1 Gbps Public & Private Network Uplinks"
+                                           # Use text description for bare metal server to identify network spec, like:
+                                           # "100 Mbps Public & Private Network Uplinks"
+                                           # "100 Mbps Redundant Private Network Uplinks"
+                                           # "1 Gbps Private Network Uplink"
+                                           # "1 Gbps Public & Private Network Uplinks"
+                                           # "1 Gbps Public & Private Network Uplinks (Unbonded)"
+                                           # "1 Gbps Dual Public & Private Network Uplinks (Unbonded)""
+                                           # "10 Gbps Redundant Private Network Uplinks"
+                                           # "10 Gbps Public & Private Network Uplinks (Non Datacenter Restricted)"
   },
 
   :storage => {                           # storage configuration
@@ -88,15 +96,15 @@ machine_options = {
                                           # Required, Array
              {
                :seq_id => 0,                     # disk index tag for storage group
-               :description => "500GB SATA II"   # full description of disk as SoftLayer Portal describe while ordering
+               :description => "1.00 TB SATA"   # full description of disk as SoftLayer Portal describe while ordering
              },
              {
                :seq_id => 1,
-               :description => "500GB SATA II"
+               :description => "1.00 TB SATA"
              },
              {
                :seq_id => 2,
-               :description => "500GB SATA II" 
+               :description => "1.00 TB SATA" 
              }
          ],
       :storage_groups => [                        # RAID configuration

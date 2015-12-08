@@ -116,22 +116,21 @@ class Chef::Provider::SoftlayerSshKey < Chef::Provider::LWRPBase
 
   # Design for failure
   def create_softlayer_key(name)
-     public_key_path = nil
-     @@sshkeys_search_dirs.each do |dir|
-       public_key_path = "#{dir}/#{name}.pub"
-       if ::File.exists?("#{public_key_path}")
-         break
-       else
-         public_key_path = nil
-       end
-     end
-     
+    public_key_path = nil
+    @@sshkeys_search_dirs.each do |dir|
+      public_key_path = "#{dir}/#{name}.pub"
+      if ::File.exists?("#{public_key_path}")
+        break
+      else
+        public_key_path = nil
+      end
+    end
     raise "No local public key found to generate SSH key in SoftLayer" if public_key_path.nil?
 
-     public_key   = ::File.read(public_key_path)
-     key_service  = @@client[:Security_Ssh_Key]
-     template_key = { "key" => public_key, "label" => "#{name}" }
-     key_service.createObject template_key
+    public_key   = ::File.read(public_key_path)
+    key_service  = @@client[:Security_Ssh_Key]
+    template_key = { "key" => public_key, "label" => "#{name}" }
+    key_service.createObject template_key
   end
 
 end

@@ -36,6 +36,7 @@ module Provisioning
       #
       def acquireOrderTemplate(options)
         order_template = lookup_object_options(options)
+
         order_template.merge!({ "hostname" => options[:network][:hostname] })
         order_template.merge!({ "domain"   => options[:network][:domain] })
         order_template.merge!({ "hourlyBillingFlag" => (options[:billing_period] == BILLING_TYPE[:hourly]) })
@@ -78,7 +79,7 @@ module Provisioning
         hostname         = options[:network][:hostname]
         domain           = options[:network][:domain]
         bandwidth        = options.fetch(:network).fetch(:bandwidth, DEFAULT_OPTIONS[:bandwidth])
-        network_speed    = options.fetch(:network).fetch(:network_speed,  DEFAULT_OPTIONS[:network_speed])
+        network_desc     = options.fetch(:network).fetch(:description,  DEFAULT_OPTIONS[:network_description])
         public_key       = options.fetch(:public_key,nil)
         hourly_billing   = (options.fetch(:billing_period, DEFAULT_OPTIONS[:billing_period])) == BILLING_TYPE[:hourly]
 
@@ -90,10 +91,11 @@ module Provisioning
                    { :category => :bms_cpu,       :content => { :cores => cores, :cpu_type => cpu_type } },
                    { :category => :ram,           :content => ram },
                    { :category => :os,            :content => os_name },
-                   { :category => :network,       :content => network_speed },
+                   { :category => :network,       :content => network_desc },
                    { :category => :bandwidth,     :content=>  bandwidth }
                 ]
-        specs << supplemental_specs
+
+        specs.concat supplemental_specs
 
         disks.each do |dk|
            specs << { :category => :bms_disk, :content => { :seq_id => dk[:seq_id].to_i, :desc => dk[:description] } }
@@ -113,16 +115,6 @@ module Provisioning
         # add available storage units if needed
         specs << { :category => :bms_disk_max, :content=> "#{disks_max}" } unless disks_max.nil?
 
-        # puts "specs = #{specs}"
-        prices_ids  = lookup_product_items(specs)
-        if prices_ids.nil? || !(prices_ids.is_a? Hash) || prices_ids["ids"].nil?
-          error_exit "[softlayer_driver#generateOrderTemplate_bms] The requested system specification is NOT found in IBM SoftLayer ! \nspecs: #{specs}"
-        else
-          product_order["packageId"] = prices_ids["package_id"]
-          product_order["prices"] = []
-          product_order["prices"].concat(prices_ids["ids"])
-        end
-
         product_order = {
           "complexType"       => "SoftLayer_Container_Product_Order_Hardware_Server",
           "quantity"          => 1,
@@ -136,6 +128,16 @@ module Provisioning
           "useHourlyPricing"  => hourly_billing          
         }
 
+        # puts "specs = #{specs}"
+        prices_ids  = lookup_product_items(specs)
+        if prices_ids.nil? || !(prices_ids.is_a? Hash) || prices_ids["ids"].nil?
+          error_exit "[softlayer_driver#generateOrderTemplate_bms] The requested system specification is NOT found in IBM SoftLayer ! \nspecs: #{specs}"
+        else
+          product_order["packageId"] = prices_ids["package_id"]
+          product_order["prices"] = []
+          product_order["prices"].concat(prices_ids["ids"])
+        end
+        
         product_order["imageTemplateGlobalIdentifier"] = template_id unless template_id.nil?
         product_order["sshkeys"] = { "sshKeyIds" => [ssh_key_for(hostname, public_key)["id"]] } unless public_key.nil?
 
@@ -181,6 +183,9 @@ module Provisioning
             order_container = acquireOrderTemplate_bms(options)
         else
             order_container = acquireOrderTemplate(options)
+            if (order_container["imageTemplateId"].nil? || order_container["imageTemplateId"].empty?)
+              order_container.delete("imageTemplateId")
+            end
         end
 
         begin
@@ -191,6 +196,9 @@ module Provisioning
           if action_handler.should_perform_actions
             client_order = @product_order.placeOrder order_container
             Chef::Log.debug "[softlayer_driver#place_order] Order is placed successfully!"           
+          else
+            puts "Running in why-run mode ... Order is verified and valid !"
+            return nil
           end
 
         rescue => exception
@@ -239,7 +247,7 @@ module Provisioning
           }
           end
         else
-          error_exit "[softlayer_driver#create_instance] why_run not supported !"
+          Chef::Log.info "[softlayer_driver#create_instance] Running in why-run mode ..."
         end
       end
 
@@ -269,7 +277,7 @@ module Provisioning
             provision_state:    PROVISION_STATE[:INIT]
           }
         else
-          error_exit "[softlayer_driver#create_instance_bms] why_run not supported !"
+          Chef::Log.info "[softlayer_driver#create_instance_bms] Running in why-run mode ..."
         end
       end
 

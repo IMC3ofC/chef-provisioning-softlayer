@@ -69,7 +69,7 @@ machine_options  = {
   :ram =>  8,                              # Amount of RAM in GB
                                            # Required, Integer
 
-  :os_name =>  "Red Hat Enterprise Linux 6.x - Minimal Install (64 bit)",
+  :os_name =>  "Ubuntu Linux 14.04 LTS Trusty Tahr - Minimal Install (64 bit)",
                                            # full description of OS name as SoftLayer Portal describe while ordering
                                            # Required, String
 
@@ -81,9 +81,7 @@ machine_options  = {
                                            # Required, String                               
       :speed    =>  1000                   # Speed of network in Mbps
                                            # Optional, Integer, 1000 (default)
-                                           # One of 10, 100, 1000 if "virtual server" or "bare meteal instance"
-                                           # One of 100, 1000, 100000 if "bare meteal server"
-                                                                                  
+                                           # One of 10, 100, 1000 if "virtual server"
   },
 
   :storage  => {                           # storage definition for "virtual server"

@@ -75,10 +75,6 @@ module Provisioning
             if item_price["categories"].any? { |category| category["id"] == category_id }
               item_description  = item_price["item"]["description"]
               
-              if item_description.include? "Processor"
-                item_description = add_total_cores_to_description item_description
-              end
-
               cache_product_item package.id,
                                  category_name,
                                  category_id,
@@ -88,34 +84,6 @@ module Provisioning
             end
           end
         end
-      end
-
-      #   
-      # Add total cores in items of Processor description
-      #
-      # Note: 
-      #   ProcessesCoreAmount is not available in various CPU types of
-      #   Bare Metal Server, so calculate cores of Process Type as a workaround
-      #
-      def add_total_cores_to_description (item_description)
-        base_cores = 1
-        if item_description.include? "Dual Processor"
-           base_cores = base_cores * 2
-        elsif item_description.include? "Quad Processor"
-          base_cores = base_cores * 4
-        end
-
-        if item_description.include? "Dual Core"
-          base_cores = base_cores * 2
-        elsif item_description.include? "Quad Core"
-          base_cores = base_cores * 4
-        elsif item_description.include? "Hex Core"
-          base_cores = base_cores * 6
-        elsif item_description.include? "Octo Core"
-          base_cores = base_cores * 8
-        end
-
-        "#{base_cores} Cores - #{item_description}"
       end
 
       ##
@@ -200,6 +168,7 @@ module Provisioning
       def lookup_common_object_options(objectOptions, options)
         common_template = {}
         item = objectOptions["datacenters"].detect { |dc| dc["template"]["datacenter"]["name"].include?options[:datacenter] }
+
         common_template.merge!(item["template"]) unless item.nil?
 
         item = objectOptions["networkComponents"].detect { |net| net["template"]["networkComponents"].first["maxSpeed"].to_i == options[:network][:speed].to_i }
@@ -226,7 +195,8 @@ module Provisioning
             category_id, regex =
               case spec[:category]
               when :os               then    c, r = CATEGORY_ID[:os],               /^#{spec[:content].gsub("(", "\\(").gsub(")", "\\)")}$/
-              when :bms_cpu          then    c, r = CATEGORY_ID[:bms_cores],        /^#{spec[:content][:cores].to_i} Cores(.*)Processor(.*)#{spec[:content][:cpu_type]}/
+              when :bms_cpu          then    c, r = CATEGORY_ID[:bms_cpu],          /^(.*)#{spec[:content][:cpu_type]}(.*)#{spec[:content][:cores].to_i} Cores(.*)/
+                                                                                    
               when :ram              then    c, r = CATEGORY_ID[:ram],              /^#{spec[:content]} GB/
               when :bms_raid         then    c, r = CATEGORY_ID[:bms_raid],         /^#{spec[:content]}$/
               when :bms_disk         then    c, r = CATEGORY_ID[:bms_disks][spec[:content][:seq_id]].to_i,  /^#{spec[:content][:desc]}/
@@ -252,9 +222,11 @@ module Provisioning
             end
 
             if product_item.nil?
+              # puts "#{cmp[:regex]} - #{cmp[:category_id]} is NOT found !"
               found_in_package = false
               break
             else
+              # puts "#{cmp[:regex]} - #{cmp[:category_id]} is found !"
               # skip availabel storage Unit since it's a placeholder created by us
               next if product_item[:productitem_id] == CATEGORY_ID[:disks_max]
               prices_id["ids"] << { "id" => product_item[:productitem_id] }

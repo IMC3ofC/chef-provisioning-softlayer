@@ -79,10 +79,16 @@ machine_options  = {
                                            # Required, String
       :domain   => "imdemocloud.com",      # provide a domain name
                                            # Required, String                               
-      :speed    =>  1000                   # Speed of network in Mbps
-                                           # Optional, Integer, 1000 (default)
-                                           # One of 10, 100, 1000 if "virtual server" or "bare meteal instance"
-                                           # One of 100, 1000, 100000 if "bare meteal server"
+      :description =>  "1 Gbps Public & Private Network Uplinks"
+                                           # Use text description for bare metal server to identify network spec, like:
+                                           # "100 Mbps Public & Private Network Uplinks"
+                                           # "100 Mbps Redundant Private Network Uplinks"
+                                           # "1 Gbps Private Network Uplink"
+                                           # "1 Gbps Public & Private Network Uplinks"
+                                           # "1 Gbps Public & Private Network Uplinks (Unbonded)"
+                                           # "1 Gbps Dual Public & Private Network Uplinks (Unbonded)""
+                                           # "10 Gbps Redundant Private Network Uplinks"
+                                           # "10 Gbps Public & Private Network Uplinks (Non Datacenter Restricted)"
   },
 
   :storage  => {                           # storage configuration for "bare metal instance"

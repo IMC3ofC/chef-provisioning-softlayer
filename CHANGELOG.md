@@ -1,4 +1,15 @@
 # IBM SoftLayer driver for chef-provisioning Changelog
+## 4.0.2 (Nov/26/2015)
+
+- Upgrade driver to link up with Chef Provisioning 1.5.0
+
+## 3.1.10 (May/7/2015)
+
+- Apply a patch to temporarily fix a broken function in Softlayer API
+
+## 3.1.9 (Mar/18/2015)
+
+- Fix regression bugs
 
 ## 3.1.1 (Mar/17/2015)
 
