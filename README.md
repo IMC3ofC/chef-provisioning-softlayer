@@ -6,7 +6,7 @@
 
 - It can provision, destroy and manipulate cloud instances on IBM SoftLayer
 - Support customized system specificcation for __virtual server__, __bare metal instance__ and __bare metal server__
-- Lately revision from __chef-provisioning__ v0.18
+- Lately revision from __chef-provisioning__ v1.5
 
 
 ## Requirement
@@ -29,7 +29,7 @@
 
 - Assume user is responsible for correctness of specified system configuration of a cloud instance in recipe
 - Due to loading meta data of IBM SoftLayer API, driver initialization might take minutes for bare metal server
-- Only support up to Chef 11.16
+- Support up to Chef 12.4
 
 ## Features/Functions to enhance
 
